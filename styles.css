@@ -1,0 +1,801 @@
+/* Reset & Variables */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* Netflix-inspired color palette */
+    --netflix-red: #E50914;
+    --netflix-red-hover: #F40612;
+    --netflix-red-dark: #B20710;
+    --netflix-black: #141414;
+    --netflix-dark: #000000;
+    --netflix-gray-dark: #181818;
+    --netflix-gray: #222222;
+    --netflix-gray-light: #2F2F2F;
+    --netflix-gray-lighter: #404040;
+    --netflix-white: #FFFFFF;
+    --netflix-white-dim: #E5E5E5;
+    --netflix-text: #B3B3B3;
+    
+    /* Application colors */
+    --primary-color: var(--netflix-red);
+    --primary-hover: var(--netflix-red-hover);
+    --primary-dark: var(--netflix-red-dark);
+    --background: var(--netflix-dark);
+    --surface: var(--netflix-gray-dark);
+    --surface-hover: var(--netflix-gray);
+    --text-primary: var(--netflix-white);
+    --text-secondary: var(--netflix-white-dim);
+    --text-muted: var(--netflix-text);
+    --border-color: var(--netflix-gray-light);
+    
+    /* Shadows and effects */
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 20px rgba(229, 9, 20, 0.3);
+    --radius: 4px;
+    --radius-sm: 2px;
+    --radius-lg: 8px;
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Base Styles */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: var(--background);
+    color: var(--text-primary);
+    line-height: 1.6;
+    min-height: 100vh;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+}
+
+.app-container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--background);
+}
+
+/* Header */
+.header {
+    background: rgba(20, 20, 20, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 1rem 2rem;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: var(--primary-color);
+    text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+.logo:hover {
+    color: var(--primary-hover);
+    text-shadow: 0 0 20px rgba(229, 9, 20, 0.4);
+}
+
+.header-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.select-compact {
+    background: var(--netflix-gray);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.select-compact:hover {
+    background: var(--netflix-gray-light);
+    border-color: var(--primary-color);
+}
+
+.select-compact:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(229, 9, 20, 0.2);
+}
+
+/* Main Content */
+.main {
+    flex: 1;
+    width: 100%;
+    margin-top: 60px;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    padding: 0;
+    height: calc(100vh - 120px);
+}
+
+/* Upload State */
+.upload-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.upload-container {
+    width: 100%;
+}
+
+.upload-area {
+    background: var(--surface);
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 4rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+}
+
+.upload-area:hover {
+    background: var(--surface-hover);
+    border-color: var(--primary-color);
+}
+
+.upload-area.drag-over {
+    background: var(--surface-hover);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 20px rgba(229, 9, 20, 0.2);
+}
+
+.upload-icon {
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+    transition: var(--transition);
+}
+
+.upload-area:hover .upload-icon {
+    color: var(--primary-color);
+    transform: scale(1.1);
+}
+
+.upload-area h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.upload-hint {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+/* Working State */
+.working-state {
+    width: 100%;
+    height: 100%;
+    padding: 1rem 2rem;
+}
+
+.split-layout {
+    display: flex;
+    gap: 2rem;
+    height: 100%;
+    width: 100%;
+    max-width: 1600px;
+    margin: 0 auto;
+    align-items: stretch;
+    justify-content: center;
+}
+
+/* Video Section (Left) */
+.video-section {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    max-width: 700px;
+    height: 100%;
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+}
+
+.video-header {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+    min-height: 40px;
+}
+
+.video-header h2 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.video-container {
+    background: #000;
+    border-radius: var(--radius);
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+}
+
+#video {
+    width: auto;
+    height: auto;
+    background: #000;
+    object-fit: contain;
+    display: block;
+    max-width: 100%;
+    max-height: 90%;
+}
+
+/* Portrait video specific styling */
+#video.portrait-video {
+    max-width: 50%;
+    max-height: 80%;
+}
+
+.video-controls {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-shrink: 0;
+    padding: 1rem;
+    background: var(--surface);
+    width: 100%;
+}
+
+/* Frames Section (Right) */
+.frames-section {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    max-width: 700px;
+    height: 100%;
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+}
+
+.frames-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+    min-height: 40px;
+}
+
+.frames-header h2 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.count-badge {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.frames-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.frames-container {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+    padding: 0.5rem;
+    background: #000;
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+}
+
+.frames-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    width: 100%;
+    max-width: 100%;
+    grid-auto-rows: min-content;
+    padding: 0.5rem;
+}
+
+.frames-grid.portrait-mode {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.frames-grid.wide-mode {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    width: 100%;
+    height: 100%;
+    padding: 2rem;
+    text-align: center;
+    min-height: 400px;
+}
+
+.empty-state svg {
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.empty-state p {
+    font-size: 1rem;
+    opacity: 0.7;
+    margin-top: 0.5rem;
+}
+
+/* Buttons */
+.btn-action {
+    background: var(--primary-color);
+    border: none;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-action:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: var(--netflix-gray-light);
+    border: none;
+    color: var(--text-secondary);
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-secondary:hover {
+    background: var(--netflix-gray-lighter);
+    color: var(--text-primary);
+}
+
+.btn-icon {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.5rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-icon:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background: rgba(229, 9, 20, 0.1);
+}
+
+/* Frame Items */
+.frame-item {
+    position: relative;
+    background: #111;
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: var(--transition);
+    cursor: pointer;
+    width: 100%;
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: auto;
+}
+
+.frame-item:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.7);
+    border-color: var(--primary-color);
+    z-index: 10;
+}
+
+/* Frame delete button */
+.frame-delete {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: var(--transition);
+    z-index: 20;
+}
+
+.frame-item:hover .frame-delete {
+    opacity: 1;
+}
+
+.frame-delete:hover {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    transform: scale(1.1);
+}
+
+.frame-delete svg {
+    width: 14px;
+    height: 14px;
+}
+
+.frame-item img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    aspect-ratio: 16/9;
+}
+
+.frames-grid.portrait-mode .frame-item img {
+    aspect-ratio: 9/16;
+    max-height: 200px;
+    object-fit: contain;
+}
+
+.frame-info {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%);
+    color: white;
+    padding: 1.5rem 0.75rem 0.75rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    opacity: 0;
+    transition: var(--transition);
+    z-index: 10;
+}
+
+.frame-item:hover .frame-info {
+    opacity: 1;
+}
+
+.frame-time {
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.frame-download {
+    background: rgba(229, 9, 20, 0.9);
+    border: none;
+    color: white;
+    padding: 0.4rem 0.6rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.frame-download:hover {
+    background: var(--primary-hover);
+    transform: scale(1.05);
+}
+
+.frame-download svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Footer */
+.footer {
+    background: rgba(20, 20, 20, 0.95);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 1rem;
+    text-align: center;
+    margin-top: auto;
+}
+
+.footer p {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 300;
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+}
+
+.modal-content {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 2rem;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: var(--shadow-lg);
+}
+
+.modal-content h3 {
+    font-size: 1.2rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    font-weight: 600;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 4px;
+    background: var(--netflix-gray-light);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--primary-color);
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .split-layout {
+        flex-direction: column;
+        gap: 1.5rem;
+        align-items: center;
+    }
+    
+    .working-state {
+        padding: 1rem;
+    }
+    
+    .video-section,
+    .frames-section {
+        width: 100%;
+        max-width: 100%;
+        min-height: 400px;
+    }
+    
+    .frames-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+    }
+    
+    .frames-grid.portrait-mode {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .frames-container {
+        min-height: 350px;
+        max-height: 400px;
+    }
+}
+
+@media (max-width: 768px) {
+    .header {
+        padding: 0.75rem 1rem;
+    }
+    
+    .logo {
+        font-size: 1.3rem;
+        letter-spacing: 1px;
+    }
+    
+    .header-controls {
+        gap: 0.5rem;
+    }
+    
+    .select-compact {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
+    }
+    
+    .working-state {
+        padding: 0.75rem;
+    }
+    
+    .split-layout {
+        gap: 1rem;
+    }
+    
+    .video-controls {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .frames-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+    
+    .video-container,
+    .frames-section {
+        padding: 1rem;
+    }
+    
+    .frames-container {
+        min-height: 300px;
+        padding: 0.75rem;
+    }
+    
+}
+
+@media (max-width: 480px) {
+    .upload-area h1 {
+        font-size: 1.2rem;
+    }
+    
+    .btn-action,
+    .btn-secondary {
+        padding: 0.6rem 1rem;
+        font-size: 0.85rem;
+    }
+    
+    .frames-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    
+    
+    .frames-container {
+        min-height: 250px;
+        padding: 0.5rem;
+    }
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.upload-state,
+.working-state {
+    animation: fadeIn 0.3s ease;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--netflix-gray-light);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--netflix-gray-lighter);
+}
+
+.frames-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.frames-container::-webkit-scrollbar-track {
+    background: var(--netflix-gray-dark);
+    border-radius: 4px;
+}
+
+/* Selection */
+::selection {
+    background: var(--primary-color);
+    color: white;
+}
+
+::-moz-selection {
+    background: var(--primary-color);
+    color: white;
+}
+
+/* Hide empty state when frames exist */
+.frames-container:has(.frame-item) .empty-state {
+    display: none;
+}
+
+/* Ensure both containers have same dimensions */
+.video-container,
+.frames-section {
+    min-height: 500px;
+}

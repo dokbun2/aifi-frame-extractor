@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIFI - 비디오 프레임 추출기</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <a href="/" class="logo" id="logo">AIFI-FRAME 추출기</a>
+            <div class="header-controls">
+                <select id="intervalSelect" class="select-compact">
+                    <option value="0.5">0.5초</option>
+                    <option value="1" selected>1초</option>
+                    <option value="2">2초</option>
+                    <option value="5">5초</option>
+                </select>
+                <select id="formatSelect" class="select-compact">
+                    <option value="png">PNG</option>
+                    <option value="jpg">JPG</option>
+                    <option value="webp">WebP</option>
+                </select>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Initial Upload State -->
+            <div class="upload-state" id="uploadState">
+                <div class="upload-container">
+                    <input type="file" id="fileInput" accept="video/*" hidden>
+                    <div class="upload-area" id="uploadArea">
+                        <svg class="upload-icon" width="100" height="100" viewBox="0 0 100 100" fill="none">
+                            <circle cx="50" cy="50" r="48" stroke="currentColor" stroke-width="2" stroke-dasharray="8 6" opacity="0.3"/>
+                            <path d="M50 30V60M50 60L40 50M50 60L60 50" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <h1>비디오를 드래그하거나 클릭하여 선택</h1>
+                        <p class="upload-hint">MP4, AVI, MOV, WebM 지원</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Working State (Hidden by default) -->
+            <div class="working-state" id="workingState" style="display: none;">
+                <div class="split-layout">
+                    <!-- Left: Video Player -->
+                    <div class="video-section">
+                        <div class="video-header">
+                            <h2>원본 비디오</h2>
+                        </div>
+                        <div class="video-container">
+                            <video id="video" controls></video>
+                            <div class="video-controls">
+                                <button id="extractFrame" class="btn-action">
+                                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                        <rect x="4" y="4" width="12" height="12" stroke="currentColor" stroke-width="2"/>
+                                        <circle cx="10" cy="10" r="2" fill="currentColor"/>
+                                    </svg>
+                                    현재 프레임
+                                </button>
+                                <button id="extractAll" class="btn-action">
+                                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                        <rect x="2" y="2" width="4" height="4" stroke="currentColor" stroke-width="1.5"/>
+                                        <rect x="8" y="2" width="4" height="4" stroke="currentColor" stroke-width="1.5"/>
+                                        <rect x="14" y="2" width="4" height="4" stroke="currentColor" stroke-width="1.5"/>
+                                    </svg>
+                                    전체 추출
+                                </button>
+                                <button id="newVideo" class="btn-secondary">
+                                    새 비디오
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Extracted Frames -->
+                    <div class="frames-section">
+                        <div class="frames-header">
+                            <h2>추출된 프레임 <span id="frameCount" class="count-badge">0</span></h2>
+                            <div class="frames-actions">
+                                <button id="downloadAll" class="btn-icon" title="모두 다운로드">
+                                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                        <path d="M10 2V14M10 14L6 10M10 14L14 10M3 17H17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </button>
+                                <button id="clearAll" class="btn-icon" title="모두 삭제">
+                                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                        <path d="M4 5H16M7 5V3H13V5M8 8V14M12 8V14M5 5L6 17H14L15 5H5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="frames-container">
+                            <div class="frames-grid" id="framesGrid"></div>
+                            <div class="empty-state" id="emptyState">
+                                <svg width="60" height="60" viewBox="0 0 60 60" fill="none" opacity="0.3">
+                                    <rect x="5" y="5" width="50" height="50" stroke="currentColor" stroke-width="2" stroke-dasharray="4 4"/>
+                                    <path d="M20 25L30 35L40 25" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <p>추출된 프레임이 여기에 표시됩니다</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>© 2024 AIFI · 제작자: Haruoff</p>
+        </footer>
+    </div>
+
+    <!-- Progress Modal -->
+    <div class="modal" id="progressModal" style="display: none;">
+        <div class="modal-content">
+            <h3>프레임 추출 중...</h3>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <p class="progress-text">
+                <span id="currentProgress">0</span> / <span id="totalProgress">0</span>
+            </p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
