@@ -123,6 +123,38 @@ body {
     box-shadow: 0 0 0 2px rgba(229, 9, 20, 0.2);
 }
 
+/* Sound Button */
+.btn-sound {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--primary-color);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: var(--transition);
+    border: 1px solid var(--primary-color);
+}
+
+.btn-sound:hover {
+    background: var(--primary-hover);
+    border-color: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(229, 9, 20, 0.3);
+}
+
+.btn-sound svg {
+    width: 20px;
+    height: 20px;
+}
+
+.btn-sound span {
+    white-space: nowrap;
+}
+
 /* Main Content */
 .main {
     flex: 1;
@@ -678,6 +710,20 @@ body {
     .select-compact {
         padding: 0.4rem 0.8rem;
         font-size: 0.85rem;
+    }
+    
+    .btn-sound {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
+    }
+    
+    .btn-sound span {
+        display: none; /* 모바일에서는 텍스트 숨기고 아이콘만 표시 */
+    }
+    
+    .btn-sound svg {
+        width: 18px;
+        height: 18px;
     }
     
     .working-state {
