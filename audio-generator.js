@@ -6,6 +6,7 @@ let sfxBuffers = {};
 let bgmSource = null;
 let analyser = null;
 let isPlaying = false;
+let geminiAnalyzer = null;
 
 // Initialize Audio Context
 function initAudioContext() {
@@ -34,15 +35,98 @@ document.addEventListener('DOMContentLoaded', () => {
     const previewAudio = document.getElementById('previewAudio');
     const applyAudio = document.getElementById('applyAudio');
     const downloadResult = document.getElementById('downloadResult');
-    const backToExtractor = document.getElementById('backToExtractor');
     
     const audioVisualizer = document.getElementById('audioVisualizer');
     const canvasCtx = audioVisualizer.getContext('2d');
-
-    // Back to extractor button
-    backToExtractor.addEventListener('click', () => {
-        window.location.href = '/';
+    
+    // Gemini AI Elements
+    const geminiApiKey = document.getElementById('geminiApiKey');
+    const saveApiKey = document.getElementById('saveApiKey');
+    const apiKeySection = document.getElementById('apiKeySection');
+    const aiControls = document.getElementById('aiControls');
+    const analyzeVideo = document.getElementById('analyzeVideo');
+    const autoApply = document.getElementById('autoApply');
+    const analysisProgress = document.getElementById('analysisProgress');
+    const analyzeProgressFill = document.getElementById('analyzeProgressFill');
+    const analyzeProgressText = document.getElementById('analyzeProgressText');
+    
+    // Initialize Gemini Analyzer
+    geminiAnalyzer = new GeminiAnalyzer();
+    
+    // Check for saved API key
+    if (geminiAnalyzer.loadApiKey()) {
+        geminiApiKey.value = '••••••••••••••••••••';
+        apiKeySection.style.display = 'none';
+        aiControls.style.display = 'block';
+    }
+    
+    // Save API Key
+    saveApiKey.addEventListener('click', () => {
+        const key = geminiApiKey.value.trim();
+        if (key) {
+            geminiAnalyzer.setApiKey(key);
+            geminiApiKey.value = '••••••••••••••••••••';
+            apiKeySection.style.display = 'none';
+            aiControls.style.display = 'block';
+            showNotification('API Key 저장됨', 'success');
+        } else {
+            showNotification('API Key를 입력해주세요', 'error');
+        }
     });
+    
+    // Analyze Video Button
+    analyzeVideo.addEventListener('click', async () => {
+        if (!currentVideo) {
+            showNotification('먼저 비디오를 업로드해주세요', 'error');
+            return;
+        }
+        
+        analyzeVideo.disabled = true;
+        analysisProgress.style.display = 'block';
+        
+        try {
+            const recommendation = await geminiAnalyzer.analyzeVideo(currentVideo, {
+                sampleRate: 3, // Analyze every 3 seconds
+                maxFrames: 8,  // Analyze up to 8 frames
+                onProgress: (progress) => {
+                    const percentage = Math.round(progress * 100);
+                    analyzeProgressFill.style.width = `${percentage}%`;
+                    analyzeProgressText.textContent = `${percentage}%`;
+                }
+            });
+            
+            if (recommendation) {
+                if (autoApply.checked) {
+                    geminiAnalyzer.applyRecommendations(recommendation);
+                    showNotification('AI 분석 완료! 추천 설정이 적용되었습니다.', 'success');
+                    
+                    // Enable download button and show audio controls
+                    document.getElementById('downloadWithAudio').disabled = false;
+                    document.getElementById('stopAudio').style.display = 'inline-flex';
+                    document.getElementById('generatedAudioInfo').style.display = 'block';
+                    
+                    // Start visualizer
+                    if (window.audioSynthesizer && window.audioSynthesizer.analyser) {
+                        startVisualizer();
+                    }
+                } else {
+                    geminiAnalyzer.displayAnalysisResults(recommendation);
+                    showNotification('AI 분석 완료! 결과를 확인하세요.', 'success');
+                }
+            } else {
+                showNotification('분석에 실패했습니다. 다시 시도해주세요.', 'error');
+            }
+        } catch (error) {
+            console.error('Analysis error:', error);
+            showNotification('분석 중 오류가 발생했습니다: ' + error.message, 'error');
+        } finally {
+            analyzeVideo.disabled = false;
+            analysisProgress.style.display = 'none';
+            analyzeProgressFill.style.width = '0%';
+            analyzeProgressText.textContent = '0%';
+        }
+    });
+
 
     // Video Upload
     videoUploadBox.addEventListener('click', () => {
@@ -76,7 +160,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Handle video upload
     function handleVideoUpload(file) {
-        currentVideo = file;
         const videoURL = URL.createObjectURL(file);
         
         videoPreview.src = videoURL;
@@ -88,6 +171,12 @@ document.addEventListener('DOMContentLoaded', () => {
         
         videoPreview.addEventListener('loadedmetadata', () => {
             duration.textContent = videoPreview.duration.toFixed(2);
+            currentVideo = videoPreview; // Set currentVideo to the video element for Gemini analysis
+            
+            // Enable analyze button if API key is set
+            if (geminiAnalyzer && geminiAnalyzer.apiKey) {
+                analyzeVideo.disabled = false;
+            }
         });
     }
 
@@ -366,6 +455,109 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function hideProgressModal() {
         document.getElementById('progressModal').style.display = 'none';
+    }
+    
+    // Stop Audio button
+    const stopAudioBtn = document.getElementById('stopAudio');
+    if (stopAudioBtn) {
+        stopAudioBtn.addEventListener('click', () => {
+            if (window.audioSynthesizer) {
+                window.audioSynthesizer.stopAll();
+                stopAudioBtn.style.display = 'none';
+                showNotification('오디오 재생이 정지되었습니다.', 'info');
+            }
+        });
+    }
+    
+    // Download with Audio button
+    const downloadWithAudioBtn = document.getElementById('downloadWithAudio');
+    if (downloadWithAudioBtn) {
+        downloadWithAudioBtn.addEventListener('click', async () => {
+            if (!currentVideo || !window.audioSynthesizer) {
+                showNotification('먼저 비디오를 분석하고 오디오를 생성해주세요.', 'error');
+                return;
+            }
+            
+            const merger = new VideoAudioMerger();
+            showProgressModal();
+            
+            try {
+                // Stop current playback
+                window.audioSynthesizer.stopAll();
+                
+                // Merge video with audio
+                const mergedBlob = await merger.mergeVideoWithAudio(
+                    currentVideo,
+                    window.audioSynthesizer,
+                    {
+                        duration: currentVideo.duration,
+                        onProgress: (progress) => {
+                            const progressFill = document.getElementById('progressFill');
+                            if (progressFill) {
+                                progressFill.style.width = `${Math.round(progress * 100)}%`;
+                            }
+                        }
+                    }
+                );
+                
+                // Download the merged video
+                merger.downloadMergedVideo(mergedBlob, 'video-with-ai-audio.webm');
+                showNotification('비디오와 오디오가 성공적으로 합쳐졌습니다!', 'success');
+                
+            } catch (error) {
+                console.error('Merge error:', error);
+                showNotification('비디오 병합 중 오류가 발생했습니다: ' + error.message, 'error');
+            } finally {
+                hideProgressModal();
+            }
+        });
+    }
+    
+    // Visualizer function
+    function startVisualizer() {
+        if (!window.audioSynthesizer || !window.audioSynthesizer.analyser) return;
+        
+        const canvas = document.getElementById('audioVisualizer');
+        const canvasCtx = canvas.getContext('2d');
+        const analyser = window.audioSynthesizer.analyser;
+        
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        
+        function draw() {
+            if (!window.audioSynthesizer.isPlaying) {
+                // Clear canvas when not playing
+                canvasCtx.fillStyle = '#181818';
+                canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+                return;
+            }
+            
+            requestAnimationFrame(draw);
+            
+            analyser.getByteFrequencyData(dataArray);
+            
+            canvasCtx.fillStyle = '#181818';
+            canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const barWidth = (canvas.width / bufferLength) * 2.5;
+            let x = 0;
+            
+            for (let i = 0; i < bufferLength; i++) {
+                const barHeight = (dataArray[i] / 255) * canvas.height;
+                
+                // Gradient colors
+                const r = barHeight + 25 * (i / bufferLength);
+                const g = 250 * (i / bufferLength);
+                const b = 50;
+                
+                canvasCtx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                canvasCtx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+                
+                x += barWidth + 1;
+            }
+        }
+        
+        draw();
     }
 });
 
