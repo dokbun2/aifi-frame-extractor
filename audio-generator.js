@@ -28,13 +28,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileName = document.getElementById('fileName');
     const duration = document.getElementById('duration');
     
-    const bgmSelect = document.getElementById('bgmSelect');
     const bgmVolume = document.getElementById('bgmVolume');
     const bgmVolumeValue = document.getElementById('bgmVolumeValue');
     const sfxVolume = document.getElementById('sfxVolume');
     const sfxVolumeValue = document.getElementById('sfxVolumeValue');
     
-    const previewAudio = document.getElementById('previewAudio');
     const applyAudio = document.getElementById('applyAudio');
     const downloadResult = document.getElementById('downloadResult');
     
@@ -138,9 +136,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     
                     // Enable download button and show audio controls
-                    document.getElementById('downloadWithAudio').disabled = false;
-                    document.getElementById('stopAudio').style.display = 'inline-flex';
-                    document.getElementById('generatedAudioInfo').style.display = 'block';
+                    const downloadBtn = document.getElementById('downloadWithAudio');
+                    if (downloadBtn) {
+                        downloadBtn.disabled = false;
+                    }
+                    const stopBtn = document.getElementById('stopAudio');
+                    if (stopBtn) {
+                        stopBtn.style.display = 'inline-flex';
+                    }
+                    const audioInfo = document.getElementById('generatedAudioInfo');
+                    if (audioInfo) {
+                        audioInfo.style.display = 'block';
+                    }
                     
                     // Update audio status
                     const audioStatus = document.getElementById('audioStatus');
@@ -253,24 +260,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Volume Controls
-    bgmVolume.addEventListener('input', (e) => {
-        bgmVolumeValue.textContent = e.target.value + '%';
-        if (bgmSource && bgmSource.gainNode) {
-            bgmSource.gainNode.gain.value = e.target.value / 100;
-        }
-    });
+    if (bgmVolume) {
+        bgmVolume.addEventListener('input', (e) => {
+            bgmVolumeValue.textContent = e.target.value + '%';
+            if (bgmSource && bgmSource.gainNode) {
+                bgmSource.gainNode.gain.value = e.target.value / 100;
+            }
+            if (enhancedAudioEngine && enhancedAudioEngine.masterGain) {
+                enhancedAudioEngine.masterGain.gain.value = e.target.value / 100;
+            }
+        });
+    }
 
-    sfxVolume.addEventListener('input', (e) => {
-        sfxVolumeValue.textContent = e.target.value + '%';
-    });
-
-    // BGM Selection
-    bgmSelect.addEventListener('change', async (e) => {
-        stopBGM();
-        if (e.target.value) {
-            await loadBGM(e.target.value);
-        }
-    });
+    if (sfxVolume) {
+        sfxVolume.addEventListener('input', (e) => {
+            sfxVolumeValue.textContent = e.target.value + '%';
+        });
+    }
 
     // Load BGM
     async function loadBGM(type) {
@@ -397,24 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
         oscillator.stop(now + 0.5);
     }
 
-    // Preview audio
-    previewAudio.addEventListener('click', () => {
-        if (!isPlaying) {
-            playBGM();
-            isPlaying = true;
-            previewAudio.textContent = '정지';
-            startVisualizer();
-        } else {
-            stopBGM();
-            isPlaying = false;
-            previewAudio.innerHTML = `
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M5 4L15 10L5 16V4Z" fill="currentColor"/>
-                </svg>
-                미리듣기
-            `;
-        }
-    });
+    // Remove preview audio button handler as it doesn't exist in HTML
 
     // Audio Visualizer
     function startVisualizer() {
@@ -455,31 +444,37 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Apply audio to video
-    applyAudio.addEventListener('click', async () => {
-        if (!currentVideo) {
-            showNotification('먼저 비디오를 업로드해주세요.', 'error');
-            return;
-        }
-        
-        showProgressModal();
-        
-        // In a real implementation, you would:
-        // 1. Use MediaRecorder API to combine video and audio
-        // 2. Process with Web Audio API
-        // 3. Export the combined file
-        
-        setTimeout(() => {
-            hideProgressModal();
-            downloadResult.disabled = false;
-            showNotification('오디오가 성공적으로 적용되었습니다!', 'success');
-        }, 2000);
-    });
+    if (applyAudio) {
+        applyAudio.addEventListener('click', async () => {
+            if (!currentVideo) {
+                showNotification('먼저 비디오를 업로드해주세요.', 'error');
+                return;
+            }
+            
+            showProgressModal();
+            
+            // In a real implementation, you would:
+            // 1. Use MediaRecorder API to combine video and audio
+            // 2. Process with Web Audio API
+            // 3. Export the combined file
+            
+            setTimeout(() => {
+                hideProgressModal();
+                if (downloadResult) {
+                    downloadResult.disabled = false;
+                }
+                showNotification('오디오가 성공적으로 적용되었습니다!', 'success');
+            }, 2000);
+        });
+    }
 
     // Download result
-    downloadResult.addEventListener('click', () => {
-        // In a real implementation, download the processed video
-        showNotification('다운로드 기능은 준비 중입니다.', 'info');
-    });
+    if (downloadResult) {
+        downloadResult.addEventListener('click', () => {
+            // In a real implementation, download the processed video
+            showNotification('다운로드 기능은 준비 중입니다.', 'info');
+        });
+    }
 
     // Show notification
     function showNotification(message, type = 'info') {
@@ -533,14 +528,37 @@ document.addEventListener('DOMContentLoaded', () => {
     const stopAudioBtn = document.getElementById('stopAudio');
     if (stopAudioBtn) {
         stopAudioBtn.addEventListener('click', () => {
-            stopRealtimeMotionTracking();
-            if (enhancedAudioEngine) {
-                enhancedAudioEngine.stopAll();
+            // Stop real-time motion tracking if active
+            if (typeof stopRealtimeMotionTracking === 'function') {
+                stopRealtimeMotionTracking();
             }
-            if (window.audioSynthesizer) {
-                window.audioSynthesizer.stopAll();
+            
+            // Stop enhanced audio engine
+            if (enhancedAudioEngine && enhancedAudioEngine.stopAll) {
+                try {
+                    enhancedAudioEngine.stopAll();
+                } catch (e) {
+                    console.error('Error stopping enhanced audio:', e);
+                }
             }
+            
+            // Stop audio synthesizer
+            if (window.audioSynthesizer && window.audioSynthesizer.stopAll) {
+                try {
+                    window.audioSynthesizer.stopAll();
+                } catch (e) {
+                    console.error('Error stopping synthesizer:', e);
+                }
+            }
+            
+            // Stop any BGM that might be playing
+            if (typeof stopBGM === 'function') {
+                stopBGM();
+            }
+            
+            // Update UI
             stopAudioBtn.style.display = 'none';
+            isPlaying = false;
             showNotification('오디오 재생이 정지되었습니다.', 'info');
         });
     }
@@ -549,8 +567,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadWithAudioBtn = document.getElementById('downloadWithAudio');
     if (downloadWithAudioBtn) {
         downloadWithAudioBtn.addEventListener('click', async () => {
-            if (!currentVideo || !window.audioSynthesizer) {
+            if (!currentVideo) {
+                showNotification('먼저 비디오를 업로드해주세요.', 'error');
+                return;
+            }
+            
+            // Check if audio has been generated
+            const hasAudio = (window.audioSynthesizer && window.audioSynthesizer.isPlaying) || 
+                           (enhancedAudioEngine && enhancedAudioEngine.isPlaying);
+            
+            if (!hasAudio) {
                 showNotification('먼저 비디오를 분석하고 오디오를 생성해주세요.', 'error');
+                return;
+            }
+            
+            // Check if VideoAudioMerger is available
+            if (typeof VideoAudioMerger === 'undefined') {
+                showNotification('비디오 병합 모듈을 로드할 수 없습니다. 페이지를 새로고침해주세요.', 'error');
                 return;
             }
             
@@ -559,12 +592,20 @@ document.addEventListener('DOMContentLoaded', () => {
             
             try {
                 // Stop current playback
-                window.audioSynthesizer.stopAll();
+                if (enhancedAudioEngine && enhancedAudioEngine.stopAll) {
+                    enhancedAudioEngine.stopAll();
+                }
+                if (window.audioSynthesizer && window.audioSynthesizer.stopAll) {
+                    window.audioSynthesizer.stopAll();
+                }
+                
+                // Use the appropriate audio engine for merging
+                const audioEngine = enhancedAudioEngine || window.audioSynthesizer;
                 
                 // Merge video with audio
                 const mergedBlob = await merger.mergeVideoWithAudio(
                     currentVideo,
-                    window.audioSynthesizer,
+                    audioEngine,
                     {
                         duration: currentVideo.duration,
                         onProgress: (progress) => {
