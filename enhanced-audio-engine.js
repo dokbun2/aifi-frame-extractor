@@ -1,4 +1,4 @@
-// Enhanced Audio Engine - 움직임 기반 동적 오디오 생성
+// Enhanced Audio Engine - 움직임 기반 사운드 이펙트 생성
 class EnhancedAudioEngine {
     constructor() {
         this.audioContext = null;
@@ -7,46 +7,69 @@ class EnhancedAudioEngine {
         this.analyser = null;
         this.masterGain = null;
         
-        // Motion to sound mapping
+        // Motion to sound effect mapping (NO MUSIC)
         this.motionSounds = {
-            // Movement intensity levels
-            static: { tempo: 60, volume: 0.3, energy: 0.1 },
-            minimal: { tempo: 80, volume: 0.4, energy: 0.3 },
-            moderate: { tempo: 100, volume: 0.5, energy: 0.5 },
-            active: { tempo: 120, volume: 0.7, energy: 0.7 },
-            intense: { tempo: 140, volume: 0.9, energy: 0.9 }
+            // Movement intensity only affects volume
+            static: { volume: 0.0, energy: 0.0 },
+            minimal: { volume: 0.3, energy: 0.2 },
+            moderate: { volume: 0.5, energy: 0.5 },
+            active: { volume: 0.7, energy: 0.7 },
+            intense: { volume: 0.9, energy: 0.9 }
         };
         
-        // Pattern-based music styles
-        this.patternStyles = {
-            rhythmic: {
-                type: 'percussion',
-                pattern: [1, 0, 0.5, 0, 1, 0, 0.5, 0], // Basic beat pattern
-                sounds: ['kick', 'hihat', 'snare']
+        // Realistic sound effects based on detected actions
+        this.soundEffects = {
+            // Human movement sounds
+            footstep: {
+                type: 'footstep',
+                variations: ['soft', 'normal', 'heavy'],
+                duration: 0.15,
+                interval: 500 // ms between steps
             },
-            continuous: {
-                type: 'ambient',
-                pattern: 'sustained',
-                sounds: ['pad', 'drone']
+            handGesture: {
+                type: 'swoosh',
+                duration: 0.2,
+                frequency: [600, 1200] // Frequency range
             },
-            variable: {
-                type: 'melodic',
-                pattern: 'arpeggiated',
-                sounds: ['synth', 'pluck']
+            clapping: {
+                type: 'clap',
+                duration: 0.05,
+                frequency: [2000, 4000]
             },
-            steady: {
-                type: 'bass',
-                pattern: [1, 0.5, 1, 0.5],
-                sounds: ['bass', 'sub']
+            
+            // Environmental sounds
+            rain: {
+                type: 'continuous',
+                density: 100, // drops per second
+                duration: 'continuous'
+            },
+            wind: {
+                type: 'continuous',
+                intensity: 0.5,
+                duration: 'continuous'
+            },
+            thunder: {
+                type: 'impact',
+                duration: 2.0,
+                frequency: [30, 100]
+            },
+            
+            // Object interaction sounds
+            doorOpen: {
+                type: 'creak',
+                duration: 0.8,
+                frequency: [200, 400]
+            },
+            impact: {
+                type: 'hit',
+                duration: 0.1,
+                frequency: [80, 200]
+            },
+            waterSplash: {
+                type: 'splash',
+                duration: 0.3,
+                frequency: [500, 2000]
             }
-        };
-        
-        // Event-based sound effects
-        this.eventSounds = {
-            collision: { type: 'impact', duration: 0.2, frequency: 100 },
-            gesture: { type: 'swoosh', duration: 0.3, frequency: 800 },
-            jump: { type: 'thud', duration: 0.15, frequency: 60 },
-            clap: { type: 'clap', duration: 0.05, frequency: 2000 }
         };
         
         // Current playback state
@@ -118,7 +141,7 @@ class EnhancedAudioEngine {
         this.convolver.buffer = impulse;
     }
     
-    // Generate audio based on motion analysis
+    // Generate audio based on motion analysis (SOUND EFFECTS ONLY)
     generateFromMotion(motionData, geminiAnalysis) {
         if (!this.isInitialized) {
             this.initialize();
@@ -127,24 +150,45 @@ class EnhancedAudioEngine {
         // Stop current playback
         this.stopAll();
         
-        // Determine audio parameters from motion
+        // Determine volume from motion intensity
         const motionParams = this.motionSounds[motionData.type] || this.motionSounds.moderate;
-        
-        // Adjust tempo based on motion intensity
-        this.currentTempo = motionParams.tempo;
-        if (motionData.pattern === 'rhythmic') {
-            this.currentTempo *= 1.2; // Speed up for rhythmic motion
-        }
-        
-        // Set volume based on motion intensity
         this.masterGain.gain.value = motionParams.volume;
         
-        // Generate appropriate music pattern
-        this.playMotionPattern(motionData.pattern, motionParams);
-        
-        // Add event-based sounds if detected
+        // Detect and play appropriate sound effects based on motion
         if (geminiAnalysis && geminiAnalysis.motion_analysis) {
-            this.scheduleEventSounds(geminiAnalysis.motion_analysis);
+            const motion = geminiAnalysis.motion_analysis;
+            
+            // Walking/Running detection
+            if (motion.primary_action && 
+                (motion.primary_action.includes('walking') || 
+                 motion.primary_action.includes('running') ||
+                 motion.primary_action.includes('stepping'))) {
+                this.startFootsteps(motion.movement_intensity);
+            }
+            
+            // Hand gesture detection
+            if (motion.gesture_detected && 
+                (motion.gesture_detected.includes('waving') ||
+                 motion.gesture_detected.includes('pointing') ||
+                 motion.gesture_detected.includes('gesturing'))) {
+                this.playHandGesture();
+            }
+            
+            // Clapping detection
+            if (motion.gesture_detected && motion.gesture_detected.includes('clapping')) {
+                this.playClapping();
+            }
+            
+            // Environmental sounds based on scene
+            if (geminiAnalysis.scene_type === 'nature' || 
+                geminiAnalysis.key_objects?.includes('rain')) {
+                this.startRainSound();
+            }
+            
+            // Impact/collision sounds
+            if (motion.collision_events) {
+                this.playImpactSound();
+            }
         }
         
         // Apply spatial audio based on motion vector
@@ -155,24 +199,150 @@ class EnhancedAudioEngine {
         this.isPlaying = true;
     }
     
-    // Play pattern-based music
-    playMotionPattern(pattern, params) {
-        const style = this.patternStyles[pattern] || this.patternStyles.steady;
-        const beatDuration = 60 / this.currentTempo; // Duration of one beat in seconds
+    // Create footstep sounds
+    startFootsteps(intensity = 0.5) {
+        let stepInterval = 500; // Default walking pace
         
-        if (style.type === 'percussion') {
-            this.playPercussionPattern(style, beatDuration, params.energy);
-        } else if (style.type === 'ambient') {
-            this.playAmbientDrone(params.energy);
-        } else if (style.type === 'melodic') {
-            this.playMelodicPattern(beatDuration, params.energy);
-        } else if (style.type === 'bass') {
-            this.playBassPattern(style, beatDuration, params.energy);
+        if (intensity > 0.7) {
+            stepInterval = 300; // Running
+        } else if (intensity < 0.3) {
+            stepInterval = 700; // Slow walk
         }
+        
+        const playStep = () => {
+            if (!this.isPlaying) return;
+            
+            const now = this.audioContext.currentTime;
+            
+            // Create footstep sound using filtered noise
+            const noise = this.createNoise(0.05);
+            const filter = this.audioContext.createBiquadFilter();
+            const gainNode = this.audioContext.createGain();
+            
+            filter.type = 'lowpass';
+            filter.frequency.value = 200 + Math.random() * 100;
+            filter.Q.value = 2;
+            
+            // Envelope for footstep
+            gainNode.gain.setValueAtTime(0, now);
+            gainNode.gain.linearRampToValueAtTime(intensity * 0.3, now + 0.01);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+            
+            noise.connect(filter);
+            filter.connect(gainNode);
+            gainNode.connect(this.masterGain);
+            
+            noise.start(now);
+            
+            // Schedule next step
+            if (this.isPlaying) {
+                setTimeout(() => playStep(), stepInterval + Math.random() * 50);
+            }
+        };
+        
+        playStep();
     }
     
-    // Play percussion pattern
-    playPercussionPattern(style, beatDuration, energy) {
+    // Play hand gesture swoosh sound
+    playHandGesture() {
+        const now = this.audioContext.currentTime;
+        const duration = 0.2;
+        
+        // Create swoosh using filtered noise
+        const noise = this.createNoise(duration);
+        const filter = this.audioContext.createBiquadFilter();
+        const gainNode = this.audioContext.createGain();
+        
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(600, now);
+        filter.frequency.exponentialRampToValueAtTime(1200, now + duration);
+        filter.Q.value = 5;
+        
+        // Envelope
+        gainNode.gain.setValueAtTime(0, now);
+        gainNode.gain.linearRampToValueAtTime(0.2, now + 0.02);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+        
+        noise.connect(filter);
+        filter.connect(gainNode);
+        gainNode.connect(this.masterGain);
+        
+        noise.start(now);
+        this.currentSources.push(noise);
+    }
+    
+    // Play clapping sound
+    playClapping() {
+        const now = this.audioContext.currentTime;
+        
+        // Create clap using burst of filtered noise
+        const noise = this.createNoise(0.03);
+        const filter = this.audioContext.createBiquadFilter();
+        const gainNode = this.audioContext.createGain();
+        
+        filter.type = 'highpass';
+        filter.frequency.value = 2000;
+        filter.Q.value = 1;
+        
+        gainNode.gain.setValueAtTime(0.4, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+        
+        noise.connect(filter);
+        filter.connect(gainNode);
+        gainNode.connect(this.masterGain);
+        
+        noise.start(now);
+        this.currentSources.push(noise);
+    }
+    
+    // Create rain sound effect
+    startRainSound() {
+        if (this.rainInterval) return; // Already playing
+        
+        const playRainDrop = () => {
+            if (!this.isPlaying) {
+                clearInterval(this.rainInterval);
+                this.rainInterval = null;
+                return;
+            }
+            
+            const now = this.audioContext.currentTime;
+            
+            // Create multiple rain drops
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    const osc = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    const filter = this.audioContext.createBiquadFilter();
+                    
+                    // High frequency for rain drops
+                    osc.frequency.value = 4000 + Math.random() * 2000;
+                    osc.type = 'sine';
+                    
+                    filter.type = 'highpass';
+                    filter.frequency.value = 3000;
+                    
+                    // Very short envelope for drop sound
+                    gainNode.gain.setValueAtTime(0.02, now);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.01);
+                    
+                    osc.connect(filter);
+                    filter.connect(gainNode);
+                    gainNode.connect(this.masterGain);
+                    
+                    osc.start(now);
+                    osc.stop(now + 0.01);
+                }, Math.random() * 100);
+            }
+        };
+        
+        // Play rain drops continuously
+        this.rainInterval = setInterval(playRainDrop, 100);
+        playRainDrop();
+    }
+    
+    // Play impact/collision sound
+    playImpactSound() {
         const startTime = this.audioContext.currentTime;
         const pattern = style.pattern;
         
@@ -213,216 +383,50 @@ class EnhancedAudioEngine {
                 osc.stop(time + 0.1);
                 
                 this.currentSources.push(osc);
-            }
-            
-            // Schedule next beat
-            if (this.isPlaying) {
-                setTimeout(() => playBeat(beatIndex + 1), beatDuration * 250); // Convert to ms
-            }
-        };
+        const now = this.audioContext.currentTime;
         
-        playBeat(0);
-    }
-    
-    // Play ambient drone
-    playAmbientDrone(energy) {
-        const osc1 = this.audioContext.createOscillator();
-        const osc2 = this.audioContext.createOscillator();
+        // Low frequency thud
+        const osc = this.audioContext.createOscillator();
         const gainNode = this.audioContext.createGain();
+        
+        osc.frequency.value = 80;
+        osc.type = 'sine';
+        
+        // Add some noise for texture
+        const noise = this.createNoise(0.05);
+        const noiseGain = this.audioContext.createGain();
         const filter = this.audioContext.createBiquadFilter();
         
-        // Set frequencies for pleasant harmony
-        const baseFreq = 110 * (1 + energy * 0.5);
-        osc1.frequency.value = baseFreq;
-        osc2.frequency.value = baseFreq * 1.5; // Perfect fifth
-        
-        osc1.type = 'sine';
-        osc2.type = 'triangle';
-        
-        // Filter for warmth
         filter.type = 'lowpass';
-        filter.frequency.value = 800 + (energy * 1200);
-        filter.Q.value = 2;
+        filter.frequency.value = 200;
         
-        // Slow volume fade in
-        gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-        gainNode.gain.linearRampToValueAtTime(energy * 0.2, this.audioContext.currentTime + 2);
+        // Impact envelope
+        gainNode.gain.setValueAtTime(0.5, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
         
-        // Connect nodes
-        osc1.connect(filter);
-        osc2.connect(filter);
-        filter.connect(gainNode);
+        noiseGain.gain.setValueAtTime(0.2, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        
+        osc.connect(gainNode);
         gainNode.connect(this.masterGain);
         
-        // Start oscillators
-        osc1.start();
-        osc2.start();
+        noise.connect(filter);
+        filter.connect(noiseGain);
+        noiseGain.connect(this.masterGain);
         
-        this.currentSources.push(osc1, osc2);
+        osc.start(now);
+        osc.stop(now + 0.1);
+        noise.start(now);
+        
+        this.currentSources.push(osc, noise);
     }
     
-    // Play melodic arpeggiated pattern
-    playMelodicPattern(beatDuration, energy) {
-        const scale = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25]; // C major scale
-        let noteIndex = 0;
-        
-        const playNote = () => {
-            if (!this.isPlaying) return;
-            
-            const osc = this.audioContext.createOscillator();
-            const gainNode = this.audioContext.createGain();
-            const filter = this.audioContext.createBiquadFilter();
-            
-            // Select note from scale
-            const freq = scale[noteIndex % scale.length] * (1 + Math.random() * 0.02); // Slight detuning
-            osc.frequency.value = freq;
-            osc.type = 'sawtooth';
-            
-            // Filter settings
-            filter.type = 'lowpass';
-            filter.frequency.value = 2000 + (energy * 2000);
-            filter.Q.value = 5;
-            
-            // ADSR envelope
-            const now = this.audioContext.currentTime;
-            gainNode.gain.setValueAtTime(0, now);
-            gainNode.gain.linearRampToValueAtTime(energy * 0.15, now + 0.01); // Attack
-            gainNode.gain.exponentialRampToValueAtTime(energy * 0.08, now + 0.1); // Decay
-            gainNode.gain.exponentialRampToValueAtTime(0.001, now + beatDuration); // Release
-            
-            // Connect and play
-            osc.connect(filter);
-            filter.connect(gainNode);
-            gainNode.connect(this.masterGain);
-            
-            osc.start(now);
-            osc.stop(now + beatDuration);
-            
-            this.currentSources.push(osc);
-            
-            // Next note
-            noteIndex = (noteIndex + 1 + Math.floor(Math.random() * 2)) % scale.length;
-            
-            if (this.isPlaying) {
-                setTimeout(() => playNote(), beatDuration * 1000 / 2);
-            }
-        };
-        
-        playNote();
-    }
-    
-    // Play bass pattern
-    playBassPattern(style, beatDuration, energy) {
-        const pattern = style.pattern;
-        let beatIndex = 0;
-        
-        const playBass = () => {
-            if (!this.isPlaying) return;
-            
-            const velocity = pattern[beatIndex % pattern.length];
-            if (velocity > 0) {
-                const osc = this.audioContext.createOscillator();
-                const gainNode = this.audioContext.createGain();
-                const filter = this.audioContext.createBiquadFilter();
-                
-                // Deep bass frequency
-                osc.frequency.value = 55 * (beatIndex % 2 === 0 ? 1 : 1.5);
-                osc.type = 'sawtooth';
-                
-                // Filter for bass tone
-                filter.type = 'lowpass';
-                filter.frequency.value = 200 + (energy * 100);
-                filter.Q.value = 10;
-                
-                // Envelope
-                const now = this.audioContext.currentTime;
-                gainNode.gain.setValueAtTime(velocity * energy * 0.3, now);
-                gainNode.gain.exponentialRampToValueAtTime(0.001, now + beatDuration * 0.9);
-                
-                // Connect and play
-                osc.connect(filter);
-                filter.connect(gainNode);
-                gainNode.connect(this.masterGain);
-                
-                osc.start(now);
-                osc.stop(now + beatDuration);
-                
-                this.currentSources.push(osc);
-            }
-            
-            beatIndex++;
-            
-            if (this.isPlaying) {
-                setTimeout(() => playBass(), beatDuration * 1000);
-            }
-        };
-        
-        playBass();
-    }
-    
-    // Schedule event-based sounds
+    // Schedule event-based sounds (simplified - main logic in generateFromMotion)
     scheduleEventSounds(motionAnalysis) {
+        // Most sound triggering is now handled in generateFromMotion
+        // This is kept for backward compatibility
         if (motionAnalysis.collision_events) {
-            this.playEventSound('collision');
-        }
-        
-        if (motionAnalysis.gesture_detected && motionAnalysis.gesture_detected.includes('clap')) {
-            this.playEventSound('clap');
-        }
-        
-        if (motionAnalysis.primary_action && motionAnalysis.primary_action.includes('jump')) {
-            this.playEventSound('jump');
-        }
-    }
-    
-    // Play specific event sound
-    playEventSound(eventType, delay = 0) {
-        const event = this.eventSounds[eventType];
-        if (!event) return;
-        
-        const startTime = this.audioContext.currentTime + delay;
-        
-        if (eventType === 'clap') {
-            // Clap sound (burst of noise)
-            const noise = this.createNoise(event.duration);
-            const gainNode = this.audioContext.createGain();
-            const filter = this.audioContext.createBiquadFilter();
-            
-            filter.type = 'bandpass';
-            filter.frequency.value = event.frequency;
-            filter.Q.value = 10;
-            
-            gainNode.gain.setValueAtTime(0.5, startTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + event.duration);
-            
-            noise.connect(filter);
-            filter.connect(gainNode);
-            gainNode.connect(this.masterGain);
-            
-            noise.start(startTime);
-        } else {
-            // Other event sounds using oscillators
-            const osc = this.audioContext.createOscillator();
-            const gainNode = this.audioContext.createGain();
-            
-            osc.frequency.value = event.frequency;
-            osc.type = 'sine';
-            
-            if (eventType === 'collision') {
-                // Add some noise for impact
-                const noise = this.createNoise(0.05);
-                noise.connect(gainNode);
-                noise.start(startTime);
-            }
-            
-            gainNode.gain.setValueAtTime(0.3, startTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + event.duration);
-            
-            osc.connect(gainNode);
-            gainNode.connect(this.masterGain);
-            
-            osc.start(startTime);
-            osc.stop(startTime + event.duration);
+            this.playImpactSound();
         }
     }
     
@@ -479,6 +483,12 @@ class EnhancedAudioEngine {
     // Stop all playing sounds
     stopAll() {
         this.isPlaying = false;
+        
+        // Stop rain sound if playing
+        if (this.rainInterval) {
+            clearInterval(this.rainInterval);
+            this.rainInterval = null;
+        }
         
         this.currentSources.forEach(source => {
             try {
