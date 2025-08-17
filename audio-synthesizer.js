@@ -82,7 +82,13 @@ class AudioSynthesizer {
     async initialize() {
         if (this.isInitialized) return;
         
-        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        // Use shared audio context if available, otherwise create new one
+        if (window.sharedAudioContext) {
+            this.audioContext = window.sharedAudioContext;
+        } else {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            window.sharedAudioContext = this.audioContext;
+        }
         this.masterGain = this.audioContext.createGain();
         this.masterGain.connect(this.audioContext.destination);
         this.masterGain.gain.value = 0.5;

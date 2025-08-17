@@ -60,7 +60,13 @@ class EnhancedAudioEngine {
     async initialize() {
         if (this.isInitialized) return;
         
-        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        // Use shared audio context if available, otherwise create new one
+        if (window.sharedAudioContext) {
+            this.audioContext = window.sharedAudioContext;
+        } else {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            window.sharedAudioContext = this.audioContext;
+        }
         
         // Master gain for volume control
         this.masterGain = this.audioContext.createGain();

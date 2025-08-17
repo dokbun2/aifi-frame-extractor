@@ -1,5 +1,5 @@
 // Audio Generator JavaScript
-let audioContext;
+let audioContext = null;  // Shared audio context
 let currentVideo = null;
 let bgmBuffer = null;
 let sfxBuffers = {};
@@ -10,13 +10,16 @@ let geminiAnalyzer = null;
 let motionDetector = null;
 let enhancedAudioEngine = null;
 
-// Initialize Audio Context
+// Initialize Audio Context - SHARED INSTANCE
 function initAudioContext() {
     if (!audioContext) {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
         analyser = audioContext.createAnalyser();
         analyser.fftSize = 256;
+        // Store in window for global access
+        window.sharedAudioContext = audioContext;
     }
+    return audioContext;
 }
 
 // DOM Elements
@@ -49,6 +52,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const analysisProgress = document.getElementById('analysisProgress');
     const analyzeProgressFill = document.getElementById('analyzeProgressFill');
     const analyzeProgressText = document.getElementById('analyzeProgressText');
+    
+    // Initialize shared audio context first
+    initAudioContext();
     
     // Initialize Gemini Analyzer
     geminiAnalyzer = new GeminiAnalyzer();

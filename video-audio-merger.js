@@ -10,7 +10,13 @@ class VideoAudioMerger {
     // Initialize audio context
     initAudioContext() {
         if (!this.audioContext) {
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            // Use shared audio context if available, otherwise create new one
+            if (window.sharedAudioContext) {
+                this.audioContext = window.sharedAudioContext;
+            } else {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                window.sharedAudioContext = this.audioContext;
+            }
         }
         return this.audioContext;
     }

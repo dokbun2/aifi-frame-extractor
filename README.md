@@ -58,4 +58,4 @@
 
 ---
 
-© 2024 AIFI · 제작자: Haruoff
+© 2025 AIFI · 제작자: Haruoff
