@@ -77,15 +77,33 @@ class GeminiAnalyzer {
             contents: [{
                 parts: [
                     {
-                        text: `Analyze this video frame for audio generation. Provide a JSON response with:
+                        text: `Analyze this video frame for synchronized audio generation. Provide a detailed JSON response with:
                         1. "mood": The overall mood (energetic, calm, dramatic, peaceful, tense, cheerful)
                         2. "scene_type": Type of scene (action, nature, urban, indoor, sports, celebration)
                         3. "key_objects": Main objects visible (people, vehicles, animals, technology)
-                        4. "suggested_music_tempo": slow, medium, or fast
-                        5. "suggested_effects": List of sound effects that would enhance this scene
-                        6. "confidence": Your confidence level (0-1)
+                        4. "motion_analysis": {
+                            "movement_intensity": 0-1 scale of motion amount,
+                            "movement_type": "static", "slow", "moderate", "fast", "chaotic",
+                            "primary_action": Describe main action (walking, running, jumping, sitting, etc),
+                            "collision_events": Any impacts or collisions detected,
+                            "gesture_detected": Hand movements, clapping, waving, etc
+                        }
+                        5. "human_detection": {
+                            "people_count": Number of people visible,
+                            "pose_description": Body positions (standing, sitting, moving),
+                            "facial_expression": If visible (happy, sad, neutral, talking),
+                            "interaction": People interacting with objects or each other
+                        }
+                        6. "audio_cues": {
+                            "suggested_music_tempo": BPM range (60-180),
+                            "rhythm_pattern": "steady", "syncopated", "irregular", "none",
+                            "suggested_effects": Specific sound effects with timestamps,
+                            "volume_dynamics": "quiet", "moderate", "loud", "variable"
+                        }
+                        7. "temporal_changes": Compare with previous frame if this is not the first frame
+                        8. "confidence": Your confidence level (0-1)
                         
-                        Focus on elements that would guide audio selection.`
+                        Focus on motion, events, and temporal changes for precise audio synchronization.`
                     },
                     {
                         inline_data: {
@@ -161,8 +179,8 @@ class GeminiAnalyzer {
     // Analyze multiple frames from a video
     async analyzeVideo(video, options = {}) {
         const {
-            sampleRate = 5, // Analyze every 5 seconds
-            maxFrames = 10, // Maximum frames to analyze
+            sampleRate = 0.5, // Analyze every 0.5 seconds for better motion detection
+            maxFrames = 16, // Increased for better temporal analysis
             onProgress = () => {}
         } = options;
 

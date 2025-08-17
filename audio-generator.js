@@ -7,6 +7,8 @@ let bgmSource = null;
 let analyser = null;
 let isPlaying = false;
 let geminiAnalyzer = null;
+let motionDetector = null;
+let enhancedAudioEngine = null;
 
 // Initialize Audio Context
 function initAudioContext() {
@@ -53,6 +55,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize Gemini Analyzer
     geminiAnalyzer = new GeminiAnalyzer();
     
+    // Initialize Motion Detector
+    motionDetector = new MotionDetector();
+    
+    // Initialize Enhanced Audio Engine
+    enhancedAudioEngine = new EnhancedAudioEngine();
+    
+    // Real-time motion tracking variables
+    let motionTrackingInterval = null;
+    let isMotionTracking = false;
+    
     // Check for saved API key
     if (geminiAnalyzer.loadApiKey()) {
         geminiApiKey.value = '••••••••••••••••••••';
@@ -85,28 +97,66 @@ document.addEventListener('DOMContentLoaded', () => {
         analysisProgress.style.display = 'block';
         
         try {
+            // Initialize enhanced audio engine
+            await enhancedAudioEngine.initialize();
+            
+            // Reset motion detector
+            motionDetector.reset();
+            
+            // Analyze video with enhanced settings
             const recommendation = await geminiAnalyzer.analyzeVideo(currentVideo, {
-                sampleRate: 3, // Analyze every 3 seconds
-                maxFrames: 8,  // Analyze up to 8 frames
+                sampleRate: 0.5, // Analyze every 0.5 seconds for better motion detection
+                maxFrames: 16,  // More frames for better temporal analysis
                 onProgress: (progress) => {
                     const percentage = Math.round(progress * 100);
                     analyzeProgressFill.style.width = `${percentage}%`;
                     analyzeProgressText.textContent = `${percentage}%`;
+                    
+                    // Also analyze motion for each frame
+                    const motionData = motionDetector.analyzeMotion(currentVideo);
+                    console.log('Motion detected:', motionData);
                 }
             });
             
             if (recommendation) {
+                // Get motion summary
+                const motionSummary = motionDetector.getMotionSummary();
+                console.log('Motion summary:', motionSummary);
+                
                 if (autoApply.checked) {
-                    geminiAnalyzer.applyRecommendations(recommendation);
-                    showNotification('AI 분석 완료! 추천 설정이 적용되었습니다.', 'success');
+                    // Use enhanced audio engine with motion data
+                    if (motionSummary) {
+                        enhancedAudioEngine.generateFromMotion(
+                            motionSummary,
+                            recommendation.analysisDetails[0]?.analysis
+                        );
+                        showNotification('🎵 동적 오디오 생성 완료! 움직임에 맞춰 음악이 재생됩니다.', 'success');
+                    } else {
+                        // Fallback to original synthesizer
+                        geminiAnalyzer.applyRecommendations(recommendation);
+                        showNotification('AI 분석 완료! 추천 설정이 적용되었습니다.', 'success');
+                    }
                     
                     // Enable download button and show audio controls
                     document.getElementById('downloadWithAudio').disabled = false;
                     document.getElementById('stopAudio').style.display = 'inline-flex';
                     document.getElementById('generatedAudioInfo').style.display = 'block';
                     
-                    // Start visualizer
-                    if (window.audioSynthesizer && window.audioSynthesizer.analyser) {
+                    // Update audio status
+                    const audioStatus = document.getElementById('audioStatus');
+                    if (audioStatus && motionSummary) {
+                        audioStatus.innerHTML = `
+                            <p><strong>움직임 패턴:</strong> ${motionSummary.pattern}</p>
+                            <p><strong>평균 강도:</strong> ${(motionSummary.averageIntensity * 100).toFixed(1)}%</p>
+                            <p><strong>추천 BPM:</strong> ${motionSummary.suggestedTempo}</p>
+                        `;
+                    }
+                    
+                    // Start visualizer with enhanced engine
+                    if (enhancedAudioEngine && enhancedAudioEngine.analyser) {
+                        startEnhancedVisualizer();
+                        startRealtimeMotionTracking();
+                    } else if (window.audioSynthesizer && window.audioSynthesizer.analyser) {
                         startVisualizer();
                     }
                 } else {
@@ -176,6 +226,28 @@ document.addEventListener('DOMContentLoaded', () => {
             // Enable analyze button if API key is set
             if (geminiAnalyzer && geminiAnalyzer.apiKey) {
                 analyzeVideo.disabled = false;
+            }
+        });
+        
+        // Add video playback event listeners for motion tracking
+        videoPreview.addEventListener('play', () => {
+            if (enhancedAudioEngine && enhancedAudioEngine.isPlaying && !isMotionTracking) {
+                startRealtimeMotionTracking();
+            }
+        });
+        
+        videoPreview.addEventListener('pause', () => {
+            if (isMotionTracking) {
+                stopRealtimeMotionTracking();
+            }
+        });
+        
+        videoPreview.addEventListener('ended', () => {
+            if (isMotionTracking) {
+                stopRealtimeMotionTracking();
+            }
+            if (enhancedAudioEngine) {
+                enhancedAudioEngine.stopAll();
             }
         });
     }
@@ -461,11 +533,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const stopAudioBtn = document.getElementById('stopAudio');
     if (stopAudioBtn) {
         stopAudioBtn.addEventListener('click', () => {
+            stopRealtimeMotionTracking();
+            if (enhancedAudioEngine) {
+                enhancedAudioEngine.stopAll();
+            }
             if (window.audioSynthesizer) {
                 window.audioSynthesizer.stopAll();
-                stopAudioBtn.style.display = 'none';
-                showNotification('오디오 재생이 정지되었습니다.', 'info');
             }
+            stopAudioBtn.style.display = 'none';
+            showNotification('오디오 재생이 정지되었습니다.', 'info');
         });
     }
     
@@ -513,7 +589,65 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Visualizer function
+    // Enhanced visualizer function for motion-based audio
+    function startEnhancedVisualizer() {
+        if (!enhancedAudioEngine || !enhancedAudioEngine.analyser) return;
+        
+        const canvas = document.getElementById('audioVisualizer');
+        const canvasCtx = canvas.getContext('2d');
+        const analyser = enhancedAudioEngine.analyser;
+        
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        
+        function draw() {
+            if (!enhancedAudioEngine.isPlaying) {
+                canvasCtx.fillStyle = '#181818';
+                canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+                return;
+            }
+            
+            requestAnimationFrame(draw);
+            
+            analyser.getByteFrequencyData(dataArray);
+            
+            // Create gradient background
+            const gradient = canvasCtx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#1a1a1a');
+            gradient.addColorStop(1, '#0a0a0a');
+            canvasCtx.fillStyle = gradient;
+            canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const barWidth = (canvas.width / bufferLength) * 2.5;
+            let x = 0;
+            
+            for (let i = 0; i < bufferLength; i++) {
+                const barHeight = (dataArray[i] / 255) * canvas.height * 0.8;
+                
+                // Color based on frequency and motion
+                const hue = (i / bufferLength) * 120 + 180; // Blue to purple
+                const saturation = 50 + (dataArray[i] / 255) * 50;
+                const lightness = 30 + (dataArray[i] / 255) * 40;
+                
+                canvasCtx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+                canvasCtx.fillRect(x, canvas.height - barHeight, barWidth - 1, barHeight);
+                
+                // Add glow effect for high intensity
+                if (dataArray[i] > 200) {
+                    canvasCtx.shadowBlur = 10;
+                    canvasCtx.shadowColor = `hsl(${hue}, 100%, 50%)`;
+                    canvasCtx.fillRect(x, canvas.height - barHeight, barWidth - 1, 2);
+                    canvasCtx.shadowBlur = 0;
+                }
+                
+                x += barWidth;
+            }
+        }
+        
+        draw();
+    }
+    
+    // Original visualizer function
     function startVisualizer() {
         if (!window.audioSynthesizer || !window.audioSynthesizer.analyser) return;
         
@@ -559,6 +693,149 @@ document.addEventListener('DOMContentLoaded', () => {
         
         draw();
     }
+    
+    // Real-time motion tracking during playback
+    function startRealtimeMotionTracking() {
+        if (isMotionTracking || !currentVideo || !enhancedAudioEngine) return;
+        
+        isMotionTracking = true;
+        const motionCanvas = document.createElement('canvas');
+        const motionUpdateFrequency = 200; // Update every 200ms
+        let frameCount = 0;
+        
+        // Create motion intensity display
+        let motionDisplay = document.getElementById('motionIntensityDisplay');
+        if (!motionDisplay) {
+            motionDisplay = document.createElement('div');
+            motionDisplay.id = 'motionIntensityDisplay';
+            motionDisplay.style.cssText = `
+                position: fixed;
+                top: 80px;
+                right: 20px;
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 10px 15px;
+                border-radius: 8px;
+                font-size: 12px;
+                z-index: 1000;
+                min-width: 200px;
+            `;
+            document.body.appendChild(motionDisplay);
+        }
+        
+        // Start tracking
+        motionTrackingInterval = setInterval(() => {
+            if (!currentVideo.paused && !currentVideo.ended) {
+                // Analyze current frame motion
+                const motionData = motionDetector.analyzeMotion(currentVideo);
+                frameCount++;
+                
+                // Update display
+                if (motionDisplay) {
+                    const intensityBar = '█'.repeat(Math.floor(motionData.intensity * 20));
+                    const emptyBar = '░'.repeat(20 - Math.floor(motionData.intensity * 20));
+                    
+                    motionDisplay.innerHTML = `
+                        <div><strong>🎬 실시간 모션 추적</strong></div>
+                        <div>강도: ${intensityBar}${emptyBar}</div>
+                        <div>타입: ${translateMotionType(motionData.type)}</div>
+                        <div>패턴: ${translatePattern(motionData.pattern)}</div>
+                        <div>프레임: ${frameCount}</div>
+                    `;
+                }
+                
+                // Update audio parameters every 5 frames
+                if (frameCount % 5 === 0) {
+                    const motionSummary = motionDetector.getMotionSummary();
+                    if (motionSummary && enhancedAudioEngine.isPlaying) {
+                        enhancedAudioEngine.updateFromMotion(motionSummary);
+                        
+                        // Add visual feedback for audio changes
+                        if (motionSummary.suggestedTempo !== enhancedAudioEngine.currentTempo) {
+                            showMiniNotification(`BPM → ${motionSummary.suggestedTempo}`, 'tempo');
+                        }
+                    }
+                }
+                
+                // Detect specific events and trigger sounds
+                if (motionData.intensity > 0.4 && motionData.type === 'intense') {
+                    enhancedAudioEngine.playEventSound('collision', 0.1);
+                }
+            } else if (currentVideo.ended) {
+                stopRealtimeMotionTracking();
+            }
+        }, motionUpdateFrequency);
+        
+        console.log('Real-time motion tracking started');
+    }
+    
+    // Stop real-time motion tracking
+    function stopRealtimeMotionTracking() {
+        if (motionTrackingInterval) {
+            clearInterval(motionTrackingInterval);
+            motionTrackingInterval = null;
+        }
+        isMotionTracking = false;
+        
+        // Remove motion display
+        const motionDisplay = document.getElementById('motionIntensityDisplay');
+        if (motionDisplay) {
+            motionDisplay.style.animation = 'fadeOut 0.3s ease';
+            setTimeout(() => {
+                motionDisplay.remove();
+            }, 300);
+        }
+        
+        console.log('Real-time motion tracking stopped');
+    }
+    
+    // Translation helpers for motion display
+    function translateMotionType(type) {
+        const translations = {
+            'static': '정적',
+            'minimal': '최소',
+            'moderate': '보통',
+            'active': '활발',
+            'intense': '강렬'
+        };
+        return translations[type] || type;
+    }
+    
+    function translatePattern(pattern) {
+        const translations = {
+            'rhythmic': '리듬',
+            'continuous': '연속',
+            'variable': '가변',
+            'steady': '일정',
+            'static': '정적',
+            'unknown': '미확인'
+        };
+        return translations[pattern] || pattern;
+    }
+    
+    // Mini notification for real-time updates
+    function showMiniNotification(message, type = 'info') {
+        const mini = document.createElement('div');
+        mini.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 8px 12px;
+            background: ${type === 'tempo' ? '#FF6B6B' : '#5B5FDE'};
+            color: white;
+            border-radius: 20px;
+            font-size: 11px;
+            z-index: 2000;
+            animation: bounceIn 0.3s ease;
+        `;
+        mini.textContent = message;
+        document.body.appendChild(mini);
+        
+        setTimeout(() => {
+            mini.style.animation = 'fadeOut 0.3s ease';
+            setTimeout(() => mini.remove(), 300);
+        }, 1500);
+    }
 });
 
 // Add animation styles
@@ -583,6 +860,25 @@ style.textContent = `
         to {
             transform: translateX(100%);
             opacity: 0;
+        }
+    }
+    
+    @keyframes fadeOut {
+        from { opacity: 1; }
+        to { opacity: 0; }
+    }
+    
+    @keyframes bounceIn {
+        0% {
+            transform: scale(0.8) translateY(10px);
+            opacity: 0;
+        }
+        50% {
+            transform: scale(1.05) translateY(-2px);
+        }
+        100% {
+            transform: scale(1) translateY(0);
+            opacity: 1;
         }
     }
 `;
