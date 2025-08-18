@@ -24,8 +24,26 @@ function initAudioContext() {
 
 // DOM Elements
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('Audio Generator: Initializing...');
+    
+    // Get all elements first
     const videoUploadBox = document.getElementById('videoUploadBox');
     const videoInput = document.getElementById('videoInput');
+    
+    // Debug log
+    console.log('Elements found:', {
+        videoUploadBox: !!videoUploadBox,
+        videoInput: !!videoInput
+    });
+    
+    // Check if critical elements exist
+    if (!videoUploadBox || !videoInput) {
+        console.error('Audio Generator: Critical elements not found!', {
+            videoUploadBox: videoUploadBox,
+            videoInput: videoInput
+        });
+        return;
+    }
     const videoPreview = document.getElementById('videoPreview');
     const videoInfo = document.getElementById('videoInfo');
     const fileName = document.getElementById('fileName');
@@ -40,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadResult = document.getElementById('downloadResult');
     
     const audioVisualizer = document.getElementById('audioVisualizer');
-    const canvasCtx = audioVisualizer.getContext('2d');
+    const canvasCtx = audioVisualizer ? audioVisualizer.getContext('2d') : null;
     
     // Gemini AI Elements
     const geminiApiKey = document.getElementById('geminiApiKey');
@@ -53,17 +71,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const analyzeProgressFill = document.getElementById('analyzeProgressFill');
     const analyzeProgressText = document.getElementById('analyzeProgressText');
     
-    // Initialize shared audio context first
-    initAudioContext();
-    
-    // Initialize Gemini Analyzer
-    geminiAnalyzer = new GeminiAnalyzer();
-    
-    // Initialize Motion Detector
-    motionDetector = new MotionDetector();
-    
-    // Initialize Enhanced Audio Engine
-    enhancedAudioEngine = new EnhancedAudioEngine();
+    // Initialize modules with error handling
+    try {
+        // Initialize shared audio context first
+        initAudioContext();
+        console.log('Audio context initialized');
+        
+        // Initialize Gemini Analyzer
+        geminiAnalyzer = new GeminiAnalyzer();
+        console.log('Gemini Analyzer initialized');
+        
+        // Initialize Motion Detector
+        motionDetector = new MotionDetector();
+        console.log('Motion Detector initialized');
+        
+        // Initialize Enhanced Audio Engine
+        enhancedAudioEngine = new EnhancedAudioEngine();
+        console.log('Enhanced Audio Engine initialized');
+    } catch (error) {
+        console.error('Error during initialization:', error);
+    }
     
     // Real-time motion tracking variables
     let motionTrackingInterval = null;
@@ -71,27 +98,30 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Check for saved API key
     if (geminiAnalyzer.loadApiKey()) {
-        geminiApiKey.value = '••••••••••••••••••••';
-        apiKeySection.style.display = 'none';
-        aiControls.style.display = 'block';
+        if (geminiApiKey) geminiApiKey.value = '••••••••••••••••••••';
+        if (apiKeySection) apiKeySection.style.display = 'none';
+        if (aiControls) aiControls.style.display = 'block';
     }
     
     // Save API Key
-    saveApiKey.addEventListener('click', () => {
-        const key = geminiApiKey.value.trim();
-        if (key) {
-            geminiAnalyzer.setApiKey(key);
-            geminiApiKey.value = '••••••••••••••••••••';
-            apiKeySection.style.display = 'none';
-            aiControls.style.display = 'block';
-            showNotification('API Key 저장됨', 'success');
-        } else {
-            showNotification('API Key를 입력해주세요', 'error');
-        }
-    });
+    if (saveApiKey && geminiApiKey) {
+        saveApiKey.addEventListener('click', () => {
+            const key = geminiApiKey.value.trim();
+            if (key) {
+                geminiAnalyzer.setApiKey(key);
+                geminiApiKey.value = '••••••••••••••••••••';
+                if (apiKeySection) apiKeySection.style.display = 'none';
+                if (aiControls) aiControls.style.display = 'block';
+                showNotification('API Key 저장됨', 'success');
+            } else {
+                showNotification('API Key를 입력해주세요', 'error');
+            }
+        });
+    }
     
     // Analyze Video Button
-    analyzeVideo.addEventListener('click', async () => {
+    if (analyzeVideo) {
+        analyzeVideo.addEventListener('click', async () => {
         if (!currentVideo) {
             showNotification('먼저 비디오를 업로드해주세요', 'error');
             return;
@@ -188,38 +218,45 @@ document.addEventListener('DOMContentLoaded', () => {
             analyzeProgressFill.style.width = '0%';
             analyzeProgressText.textContent = '0%';
         }
-    });
+        });
+    }
 
 
     // Video Upload
-    videoUploadBox.addEventListener('click', () => {
-        videoInput.click();
-    });
+    if (videoUploadBox && videoInput) {
+        videoUploadBox.addEventListener('click', () => {
+            videoInput.click();
+        });
 
-    videoUploadBox.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        videoUploadBox.classList.add('drag-over');
-    });
+        videoUploadBox.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            videoUploadBox.classList.add('drag-over');
+        });
 
-    videoUploadBox.addEventListener('dragleave', () => {
-        videoUploadBox.classList.remove('drag-over');
-    });
+        videoUploadBox.addEventListener('dragleave', () => {
+            videoUploadBox.classList.remove('drag-over');
+        });
 
-    videoUploadBox.addEventListener('drop', (e) => {
-        e.preventDefault();
-        videoUploadBox.classList.remove('drag-over');
+        videoUploadBox.addEventListener('drop', (e) => {
+            e.preventDefault();
+            videoUploadBox.classList.remove('drag-over');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type.startsWith('video/')) {
+                handleVideoUpload(files[0]);
+            }
+        });
+
+        videoInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleVideoUpload(e.target.files[0]);
+            }
+        });
         
-        const files = e.dataTransfer.files;
-        if (files.length > 0 && files[0].type.startsWith('video/')) {
-            handleVideoUpload(files[0]);
-        }
-    });
-
-    videoInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-            handleVideoUpload(e.target.files[0]);
-        }
-    });
+        console.log('Video upload event listeners attached successfully');
+    } else {
+        console.error('Cannot attach video upload listeners - elements missing');
+    }
 
     // Handle video upload
     function handleVideoUpload(file) {
@@ -883,6 +920,9 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => mini.remove(), 300);
         }, 1500);
     }
+    
+    // Final initialization check
+    console.log('Audio Generator: Full initialization complete');
 });
 
 // Add animation styles

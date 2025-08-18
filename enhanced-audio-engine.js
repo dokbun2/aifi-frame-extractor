@@ -461,16 +461,13 @@ class EnhancedAudioEngine {
     updateFromMotion(motionSummary) {
         if (!motionSummary || !this.isPlaying) return;
         
-        // Adjust tempo dynamically
+        // Adjust tempo dynamically (for footsteps)
         const targetTempo = motionSummary.suggestedTempo;
         if (Math.abs(this.currentTempo - targetTempo) > 10) {
             this.currentTempo = targetTempo;
-            // Restart with new tempo
-            const lastPattern = this.currentPattern;
-            this.stopAll();
-            if (lastPattern) {
-                this.playMotionPattern(lastPattern, this.motionSounds.moderate);
-            }
+            // Adjust footstep speed based on tempo
+            // This would require restarting footsteps with new interval
+            console.log('Tempo changed to:', targetTempo);
         }
         
         // Adjust volume based on motion
